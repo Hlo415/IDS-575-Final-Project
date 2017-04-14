@@ -1,0 +1,154 @@
+#stats 575 Final Project 
+#ga.data
+
+#descriptive analysis
+#preprocess - medium grouping them into a other category
+library(psych)
+library(plyr)
+library(dplyr)
+library(car)
+library(lubridate)
+library(zoo)
+library(xts) 
+library(forecast)
+library(tseries)
+
+str(ga.data)
+ga.data$deviceCategory<-as.factor(ga.data$deviceCategory)
+ga.data$medium <-as.factor(ga.data$medium)
+str(ga.data)
+summary(ga.data)
+attach(ga.data)
+
+ga.data$deviceCategory <- as.factor(ga.data$deviceCategory)
+levels(ga.data$deviceCategory)
+ga.data$medium  <- as.factor(ga.data$medium)
+ga.data$week    <- as.numeric(ga.data$week)
+describe(ga.data)
+gpSumCompletion <- ga.data %>% group_by(week,deviceCategory) %>% summarize(totalCompletions = sum(goal1Completions))
+View(gpSumCompletion)
+
+desktop.data <- gpSumCompletion[gpSumCompletion$deviceCategory=="desktop",]
+desktop.ts <- ts(desktop.data$totalCompletions, start=c(2016,03),end = c(2017,03), frequency=53)
+plot(desktop.ts)
+
+mobile.data <- gpSumCompletion[gpSumCompletion$deviceCategory=="mobile",]
+mobile.ts <- ts(mobile.data$totalCompletions, start=c(2016,03),end = c(2017,03), frequency=53)
+plot(mobile.ts)
+tablet.data <- gpSumCompletion[gpSumCompletion$deviceCategory=="tablet",]
+tablet.ts <- ts(tablet.data$totalCompletions, start=c(2016,03),end = c(2017,03), frequency=53)
+plot(tablet.ts)
+
+adf.test(desktop.ts)
+adf.test(mobile.ts)
+adf.test(tablet.ts)
+
+
+attach(ga.data)
+library(psych) 
+t_devicecategory<-table(deviceCategory) 
+t_devicecategorypl<-(prop.table(t_devicecategory))
+barplot(t_devicecategorypl, col=c("red", "orange", "blue", "steelblue"), main="Distribution of Device Category", ylim=c(0,0.6))
+
+
+plot(density(sessions))
+plot(density(searchSessions))
+plot(density(avgTimeOnPage))
+plot(density(bounceRate))
+plot(density(pageviewsPerSession))
+plot(density(goal1Completions))
+plot(density(avgPageLoadTime))
+
+#mosaicplot(goal1Completions~deviceCategory, color=c("red", "orange","blue"))
+
+
+# y variable
+qqnorm(goal1Completions)
+#its not very linear because we have alot of 0s labeled
+# for goals completions, how should we treat these?
+
+#lets observe the proportion of the distribution exactly
+plot(density(goal1Completions))
+table(goal1Completions)
+#2435 are 0s. 
+
+qqnorm(sessions)
+
+#bivariable descriptive/cool plots
+plot((goal1Completions~sessions), col="steelblue", pch=20, cex=0.75) 
+qplot(x= sessions,y=goal1Completions, data=ga.data, ylab="goal1Completions", xlab="Sessions", main="Relationship between Sessions and Goal1Completions, by Device", facets=~deviceCategory)
+abline(lm(goal1Completions~sessions), col="red", lwd=2)
+
+#matrix plot to check correlation between different variables
+psych::pairs.panels(ga.data[,c(4:10)])
+
+
+library(dplyr)
+bp_monthly <- bp %>% group_by(year_month) %>% tally() %>% arrange(year_month)
+bp$year_month<- as.yearmon(mdy(bp$ISSUE_DATE))
+plot(week, goal1Completions)
+str(ga.data)
+
+ga.data$week<-as.numeric(ga.data$week)
+#need to aggregate the weeks then plot them maybe.
+#too much noise here.
+plot(week, goal1Completions)
+
+par(mfrow=c(2,2))
+ga_week<-ga.data%>%select(week,goal1Completions)%>% group_by(week)%>%summarize(totalCompletions = sum(goal1Completions))
+plot(ga_week)
+lo<-loess(ga_week$totalCompletions~ga_week$week)
+lines(predict(lo), col='red',lwd=2)
+
+Ga_weektotal <- ts(ga_week$totalCompletions, start=c(2016,03),end = c(2017,03), frequency=53)
+plot(Ga_weektotal, main="GA- weekly completions total")
+lo<-loess(ga_week$totalCompletions~ga_week$week)
+lines(predict(lo), col='red',lwd=2)
+
+#ga_week<-group_by(ga.data, ga.data$week)
+#summaryga_week<-summarise(ga_week, num.types=n(),counts=sum(count()))
+#important ones, none,social, affliate, CPC, referral, organic,email
+#put all other ones into a seperate category
+
+
+
+
+ga.data$medium  <- as.factor(ga.data$medium)
+levels(ga.data$medium)
+
+#rid of the () in the none here 
+#use the 
+
+gsub("\\$", "", cost)
+ga.data$medium <- (gsub("\\(", "", ga.data$medium))
+ga.data$medium <- (gsub("\\)", "", ga.data$medium))
+levels(ga.data$medium)
+
+ga.data$medium1<- ifelse (ga.data$medium %in% c("none","cpc","social","email","organic","referral","affiliate"),"1","0")
+View(ga.data)
+
+library(car)
+ga.data$medium<- ifelse(ga.data$medium == "none", 1, ifelse(ga.data$medium == "cpc", 2, ifelse(ga.data$medium == "social", 3,ifelse(ga.data$medium == "email", 4, ifelse(ga.data$medium == "organic", 5,
+ifelse(ga.data$medium == "referral", 6, ifelse(ga.data$medium == "affiliate", 7, 0)))))))
+#7 factors for mediums, and 0 is treated as other in total of 8.
+
+ga.data$medium<- ifelse(ga.data$medium == 1, "none", ifelse(ga.data$medium == 2,"cpc", ifelse(ga.data$medium == 3,"social",ifelse(ga.data$medium == 4,"email", ifelse(ga.data$medium == 5,"organic",
+ifelse(ga.data$medium == 6, "referral", ifelse(ga.data$medium == 7, "affiliate", "other")))))))
+
+
+
+
+
+#searchsessions and goalcompletions - 0.86
+#sessions and goalcompletions - 0.66
+#probably cant have both sessions and searchsessions - multicollinearity
+#averageloadtime and sessions also have high orrelation
+#perform multivariable regression 
+# checking assumptions 
+#cleaning dataset for the medium variable #
+# Performing Time Series #
+#PCA#
+#FACTOR ANALYSIS#
+#perform three seperate line chart where mobile, device, desktop 
+#from week 1 to week 53, with goal1completions 
+
